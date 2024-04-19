@@ -1,0 +1,5 @@
+# API key
+.streamlit
+.streamlit/secrets.toml
+.env
+index.json/*
