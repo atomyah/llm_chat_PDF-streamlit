@@ -12,9 +12,79 @@ from pathlib import Path
 from llama_index import VectorStoreIndex, ServiceContext
 from langchain.chat_models import ChatOpenAI
 from llama_index.readers.file.docs_reader import PDFReader
+import hmac  # ログイン機能に必要
+
+##################################### タイトルのCSSを良しなに設定 ############################################
+# Google FontsからNoto Sans JPフォントをロードする
+st.markdown(
+    """
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
+    """,
+    unsafe_allow_html=True,
+)
+
+# Robotoフォントをタイトル文字に使用するためのHTMLスタイル
+st.markdown(
+    """
+    <style>
+    .jp-san-serif {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 24px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+##################################### タイトルのCSSを良しなに設定～ここまで ############################################
+# タイトル
+st.markdown(
+    "<h1 class='jp-san-serif'>PDFアップロードページ</h1>",
+    unsafe_allow_html=True,
+)
+
+
+##################################### ログイン機能 ############################################
+def check_password():
+    """Returns `True` if the user had a correct password."""
+
+    def login_form():
+        """Form with widgets to collect user information"""
+        with st.form("認証情報"):
+            st.text_input("ユーザー名", key="username")
+            st.text_input("パスワード", type="password", key="password")
+            st.form_submit_button("ログイン", on_click=password_entered)
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if st.session_state["username"] in st.secrets[
+            "passwords"
+        ] and hmac.compare_digest(
+            st.session_state["password"],
+            st.secrets.passwords[st.session_state["username"]],
+        ):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store the username or password.
+            del st.session_state["username"]
+        else:
+            st.session_state["password_correct"] = False
+
+    # Return True if the username + password is validated.
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Show inputs for username + password.
+    login_form()
+    if "password_correct" in st.session_state:
+        st.error("😕 User not known or password incorrect")
+    return False
+
+
+if not check_password():
+    st.stop()
+##################################### ログイン機能～ここまで ############################################
+
 
 index = st.session_state.get("index")
-
 
 prev_uploaded_file = st.session_state.get("prev_uploaded_file", None)
 
@@ -32,7 +102,6 @@ upload_file = st.file_uploader(
     type="pdf",
     on_change=on_Change_file,  # ファイルがアップロードされたら（ベクトル化するPDFを新しくアップしたら）on_Change_file()でindexを削除する．
 )
-
 
 # PDFのアップロードとベクトル化
 if upload_file and index is None:

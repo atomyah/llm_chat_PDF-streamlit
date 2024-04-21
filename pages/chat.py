@@ -22,9 +22,67 @@ from llama_index import (
     load_index_from_storage,
 )
 from llama_index.indices.base import BaseIndex
+import hmac  # ログイン機能に必要
 
-# チャット機能
-st.title("PDF Q&A チャット")
+
+##################################### タイトルのCSSを良しなに設定 ############################################
+# Google FontsからNoto Sans JPフォントをロードする
+st.markdown(
+    """
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
+    """,
+    unsafe_allow_html=True,
+)
+
+# Robotoフォントをタイトル文字に使用するためのHTMLスタイル
+st.markdown(
+    """
+    <style>
+    .jp-san-serif {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 24px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+##################################### タイトルのCSSを良しなに設定～ここまで ############################################
+# タイトル
+st.markdown(
+    "<h1 class='jp-san-serif'>質疑応答チャットページ</h1>",
+    unsafe_allow_html=True,
+)
+
+
+##################################### ログイン機能 ############################################
+def check_password():
+    """Returns `True` if the user had the correct password."""
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store the password.
+        else:
+            st.session_state["password_correct"] = False
+
+    # Return True if the password is validated.
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Show input for password.
+    st.text_input(
+        "パスワード", type="password", on_change=password_entered, key="password"
+    )
+    if "password_correct" in st.session_state:
+        st.error("😕 Password incorrect")
+    return False
+
+
+if not check_password():
+    st.stop()  # Do not continue if check_password is not True.
+##################################### ログイン機能～ここまで ############################################
+
 
 ############# admin.pyでベクトル化されたindex.json配下を読み込む機能 ##################
 if "index" not in st.session_state:
@@ -72,38 +130,34 @@ if "index" not in st.session_state:
         st.session_state["index"] = index
 
 index = st.session_state["index"]
-
 ############# admin.pyでベクトル化されたindex.json配下を読み込む機能～ここまで ##################
-
 
 # チャット履歴の初期化
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
-
-input_container = st.container()
-with input_container:
-    user_input = st.text_input(
-        "質問を入力してください", key="input", placeholder="ここに入力..."
-    )
-    if user_input:
-        with st.spinner("考え中..."):
-            query_engine = index.as_query_engine()
-            query = "\n".join(
-                [f"Human: {msg}" for msg in st.session_state["chat_history"][-10:]]
-                + [f"Human: {user_input}"]
-            )
-            answer = query_engine.query(query)
-            st.session_state["chat_history"].append(user_input)
-            st.session_state["chat_history"].append(answer.response)
-
+# テキスト入力フォームの領域
+# user_input = st.text_input(
+#     "質問を入力してください", key="input", placeholder="ここに入力..."
+# )
+user_input = st.chat_input(
+    "...質問を入力ください"
+)  # st.text_inputだと上記のようにlabelなど色々設定できる代わりに中央に表示されてしまう．
+if user_input:
+    with st.spinner("考え中..."):
+        query_engine = index.as_query_engine()
+        query = "\n".join(
+            [f"Human: {msg}" for msg in st.session_state["chat_history"][-10:]]
+            + [f"Human: {user_input}"]
+        )
+        answer = query_engine.query(query)
+        st.session_state["chat_history"].append(user_input)
+        st.session_state["chat_history"].append(answer.response)
 
 # 対話履歴の表示
-chat_container = st.container()
-with chat_container:
-    # session_state["chat_history"]の配列の奇数番目のものならユーザーの質問、偶数番目ならChatGPTの回答、として表示
-    for i, message in enumerate(st.session_state["chat_history"]):
-        if i % 2 == 0:
-            st.markdown(f"**あなた:** {message}")
-        else:
-            st.markdown(f"**ChatGPT:** {message}")
+# session_state["chat_history"]の配列の奇数番目のものならユーザーの質問、偶数番目ならChatGPTの回答、として表示
+for i, message in enumerate(st.session_state["chat_history"]):
+    if i % 2 == 0:
+        st.markdown(f"**あなた:** {message}")
+    else:
+        st.markdown(f"**ChatGPT:** {message}")
