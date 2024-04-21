@@ -1,4 +1,4 @@
-## 各モジュールバージョンリスト qa.py
+## 各モジュールバージョンリスト chat.py
 # streamlit@1.25.0
 # openai@0.27.8
 # langchain@0.0.266
@@ -26,7 +26,7 @@ from llama_index.indices.base import BaseIndex
 # チャット機能
 st.title("PDF Q&A チャット")
 
-# indexの読み込み
+############# admin.pyでベクトル化されたindex.json配下を読み込む機能 ##################
 if "index" not in st.session_state:
     with tempfile.TemporaryDirectory() as temp_dir:
         # index.jsonがあるディレクトリのパス
@@ -73,26 +73,37 @@ if "index" not in st.session_state:
 
 index = st.session_state["index"]
 
+############# admin.pyでベクトル化されたindex.json配下を読み込む機能～ここまで ##################
+
+
 # チャット履歴の初期化
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
-# ユーザー入力
-user_input = st.text_input("質問を入力してください")
 
-if user_input:
-    # 過去の履歴を含めた質問文字列の作成
-    query = "\n".join(
-        [f"Human: {msg}" for msg in st.session_state["chat_history"][-10:]]
-        + [f"Human: {user_input}"]
+input_container = st.container()
+with input_container:
+    user_input = st.text_input(
+        "質問を入力してください", key="input", placeholder="ここに入力..."
     )
+    if user_input:
+        with st.spinner("考え中..."):
+            query_engine = index.as_query_engine()
+            query = "\n".join(
+                [f"Human: {msg}" for msg in st.session_state["chat_history"][-10:]]
+                + [f"Human: {user_input}"]
+            )
+            answer = query_engine.query(query)
+            st.session_state["chat_history"].append(user_input)
+            st.session_state["chat_history"].append(answer.response)
 
-    # ChatGPTに質問を送信
-    with st.spinner("考え中..."):
-        query_engine = index.as_query_engine()
-        answer = query_engine.query(query)
 
-    # 応答を表示し、履歴に追加
-    st.write(f"ChatGPT: {answer.response}")
-    st.session_state["chat_history"].append(user_input)
-    st.session_state["chat_history"].append(answer.response)
+# 対話履歴の表示
+chat_container = st.container()
+with chat_container:
+    # session_state["chat_history"]の配列の奇数番目のものならユーザーの質問、偶数番目ならChatGPTの回答、として表示
+    for i, message in enumerate(st.session_state["chat_history"]):
+        if i % 2 == 0:
+            st.markdown(f"**あなた:** {message}")
+        else:
+            st.markdown(f"**ChatGPT:** {message}")

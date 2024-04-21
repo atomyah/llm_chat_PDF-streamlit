@@ -16,10 +16,15 @@ from llama_index.readers.file.docs_reader import PDFReader
 index = st.session_state.get("index")
 
 
+prev_uploaded_file = st.session_state.get("prev_uploaded_file", None)
+
+
 # indexをst.session_stateから削除する．
 def on_Change_file():
     if "index" in st.session_state:
         st.session_state.pop("index")
+    if "prev_uploaded_file" in st.session_state:
+        st.session_state.pop("prev_uploaded_file")
 
 
 upload_file = st.file_uploader(
@@ -28,11 +33,13 @@ upload_file = st.file_uploader(
     on_change=on_Change_file,  # ファイルがアップロードされたら（ベクトル化するPDFを新しくアップしたら）on_Change_file()でindexを削除する．
 )
 
+
 # PDFのアップロードとベクトル化
 if upload_file and index is None:
     with st.spinner(text="準備中..."):
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(upload_file.getbuffer())
+            prev_uploaded_file = upload_file.name  # アップロードされたファイル名を保存
 
             documents = PDFReader().load_data(
                 file=Path(f.name)
@@ -51,7 +58,14 @@ if upload_file and index is None:
             )
 
             st.session_state["index"] = index
+            st.session_state["prev_uploaded_file"] = (
+                prev_uploaded_file  # アップロードされたファイル名をセッションに保存
+            )
 
             # indexの永続化
             index.storage_context.persist("index.json")
             st.success("PDFのベクトル化が完了しました。")
+
+# 前回アップロードされたファイル名を表示
+if prev_uploaded_file:
+    st.write(f"前回アップロードされたファイル: {prev_uploaded_file}")
