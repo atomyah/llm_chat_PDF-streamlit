@@ -23,6 +23,21 @@ from llama_index import (
 )
 from llama_index.indices.base import BaseIndex
 import hmac  # ログイン機能に必要
+from japanese_pages import titles
+
+
+# タイトル
+st.set_page_config(page_title="チャット", page_icon="💬")
+st.markdown(
+    "<h1 class='jp-san-serif'>チャットページ</h1>",
+    unsafe_allow_html=True,
+)
+titles()
+
+st.write(
+    '<span style="color:blue;">○○○○（例：社内規則）について何でも聞いてください...😉</span>',
+    unsafe_allow_html=True,
+)
 
 
 ##################################### タイトルのCSSを良しなに設定 ############################################
@@ -40,48 +55,13 @@ st.markdown(
     <style>
     .jp-san-serif {
         font-family: 'Noto Sans JP', sans-serif;
-        font-size: 24px;
+        font-size: 1.5rem;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 ##################################### タイトルのCSSを良しなに設定～ここまで ############################################
-# タイトル
-st.markdown(
-    "<h1 class='jp-san-serif'>質疑応答チャットページ</h1>",
-    unsafe_allow_html=True,
-)
-
-
-##################################### ログイン機能 ############################################
-def check_password():
-    """Returns `True` if the user had the correct password."""
-
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store the password.
-        else:
-            st.session_state["password_correct"] = False
-
-    # Return True if the password is validated.
-    if st.session_state.get("password_correct", False):
-        return True
-
-    # Show input for password.
-    st.text_input(
-        "パスワード", type="password", on_change=password_entered, key="password"
-    )
-    if "password_correct" in st.session_state:
-        st.error("😕 Password incorrect")
-    return False
-
-
-if not check_password():
-    st.stop()  # Do not continue if check_password is not True.
-##################################### ログイン機能～ここまで ############################################
 
 
 ############# admin.pyでベクトル化されたindex.json配下を読み込む機能 ##################
@@ -91,7 +71,7 @@ if "index" not in st.session_state:
         app_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         index_dir = os.path.join(app_root, "index.json")
 
-        st.write("index_dir...", index_dir)
+        # st.write("index_dir...", index_dir)
         index_files = [
             os.path.join(index_dir, "docstore.json"),
             os.path.join(index_dir, "index_store.json"),

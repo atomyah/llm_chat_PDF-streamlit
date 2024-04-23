@@ -6,6 +6,8 @@
 # pypdf@3.15.2
 # nltk@3.8.1
 # pydantic@1.10.12
+import os
+from datetime import datetime
 import tempfile
 import streamlit as st
 from pathlib import Path
@@ -13,6 +15,15 @@ from llama_index import VectorStoreIndex, ServiceContext
 from langchain.chat_models import ChatOpenAI
 from llama_index.readers.file.docs_reader import PDFReader
 import hmac  # ログイン機能に必要
+from japanese_pages import titles
+
+# タイトル
+st.set_page_config(page_title="管理画面", page_icon="💻")
+st.markdown(
+    "<h1 class='jp-san-serif'>PDFアップロードページ（管理者用）</h1>",
+    unsafe_allow_html=True,
+)
+titles()
 
 ##################################### タイトルのCSSを良しなに設定 ############################################
 # Google FontsからNoto Sans JPフォントをロードする
@@ -29,64 +40,55 @@ st.markdown(
     <style>
     .jp-san-serif {
         font-family: 'Noto Sans JP', sans-serif;
-        font-size: 24px;
+        font-size: 1.4rem;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 ##################################### タイトルのCSSを良しなに設定～ここまで ############################################
-# タイトル
-st.markdown(
-    "<h1 class='jp-san-serif'>PDFアップロードページ</h1>",
-    unsafe_allow_html=True,
-)
 
 
 ##################################### ログイン機能 ############################################
 def check_password():
-    """Returns `True` if the user had a correct password."""
-
-    def login_form():
-        """Form with widgets to collect user information"""
-        with st.form("認証情報"):
-            st.text_input("ユーザー名", key="username")
-            st.text_input("パスワード", type="password", key="password")
-            st.form_submit_button("ログイン", on_click=password_entered)
+    """Returns `True` if the user had the correct password."""
 
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        if st.session_state["username"] in st.secrets[
-            "passwords"
-        ] and hmac.compare_digest(
-            st.session_state["password"],
-            st.secrets.passwords[st.session_state["username"]],
-        ):
+        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store the username or password.
-            del st.session_state["username"]
+            del st.session_state["password"]  # Don't store the password.
         else:
             st.session_state["password_correct"] = False
 
-    # Return True if the username + password is validated.
+    # Return True if the password is validated.
     if st.session_state.get("password_correct", False):
         return True
 
-    # Show inputs for username + password.
-    login_form()
+    # Show input for password.
+    st.text_input(
+        "パスワード", type="password", on_change=password_entered, key="password"
+    )
     if "password_correct" in st.session_state:
-        st.error("😕 User not known or password incorrect")
+        st.error("😕 Password incorrect")
     return False
 
 
 if not check_password():
-    st.stop()
+    st.stop()  # Do not continue if check_password is not True.
 ##################################### ログイン機能～ここまで ############################################
 
 
 index = st.session_state.get("index")
 
 prev_uploaded_file = st.session_state.get("prev_uploaded_file", None)
+
+# アプリ開始時に前回のアップロードしたPDFファイル名を読み込む
+prev_file_path = "prev_file.txt"
+if os.path.exists(prev_file_path):
+    with open(prev_file_path, "r") as f:
+        prev_file, prev_timestamp = f.read().split("|")
+    st.write(f"前回アップロードPDF: {prev_file} (日時: {prev_timestamp})")
 
 
 # indexをst.session_stateから削除する．
@@ -106,7 +108,7 @@ upload_file = st.file_uploader(
 # PDFのアップロードとベクトル化
 if upload_file and index is None:
     with st.spinner(text="準備中..."):
-        with tempfile.NamedTemporaryFile(delete=False) as f:
+        with tempfile.NamedTemporaryFile(delete=True) as f:
             f.write(upload_file.getbuffer())
             prev_uploaded_file = upload_file.name  # アップロードされたファイル名を保存
 
@@ -135,6 +137,8 @@ if upload_file and index is None:
             index.storage_context.persist("index.json")
             st.success("PDFのベクトル化が完了しました。")
 
-# 前回アップロードされたファイル名を表示
-if prev_uploaded_file:
-    st.write(f"前回アップロードされたファイル: {prev_uploaded_file}")
+            # 新しいファイルがアップロードされた場合prev_file.txtにPDFファイル名を書き込む
+            if prev_uploaded_file:
+                current_timestamp = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+                with open(prev_file_path, "w") as f:
+                    f.write(f"{prev_uploaded_file}|{current_timestamp}")
