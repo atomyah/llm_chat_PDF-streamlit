@@ -7,6 +7,8 @@
 # nltk@3.8.1
 # pydantic@1.10.12
 import os
+import sqlite3
+import time
 import tempfile
 import shutil
 import json
@@ -38,6 +40,31 @@ st.write(
     '<span style="color:blue;">○○○○（例：社内規則）について何でも聞いてください...😉</span>',
     unsafe_allow_html=True,
 )
+
+##################################### データベースの設定 #########################################
+# ルートディレクトリのパスを取得
+root_dir = os.path.dirname(os.path.abspath(__file__))
+
+# データベースディレクトリの作成
+db_dir = os.path.join(root_dir, "database")
+os.makedirs(db_dir, exist_ok=True)
+
+# データベースファイルのパスを設定
+db_path = os.path.join(db_dir, "chat_history.db")
+
+# データベースファイルの作成 (空ファイル)
+open(db_path, "a").close()
+
+# データベースの設定
+conn = sqlite3.connect(db_path)
+c = conn.cursor()
+
+# テーブルの作成
+c.execute(
+    """CREATE TABLE IF NOT EXISTS chat_history
+             (id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT, timestamp REAL, message TEXT)"""
+)
+################################################################################################
 
 
 ##################################### タイトルのCSSを良しなに設定 ############################################
@@ -133,6 +160,18 @@ if user_input:
         answer = query_engine.query(query)
         st.session_state["chat_history"].append(user_input)
         st.session_state["chat_history"].append(answer.response)
+
+        # チャット履歴をデータベースに挿入
+        timestamp = time.time()
+        c.execute(
+            "INSERT INTO chat_history (sender, timestamp, message) VALUES (?, ?, ?)",
+            (user_input, "user", timestamp),
+        )
+        c.execute(
+            "INSERT INTO chat_history (sender, timestamp, message) VALUES (?, ?, ?)",
+            (answer.response, "chatgpt", timestamp),
+        )
+        conn.commit()
 
 # 対話履歴の表示
 # session_state["chat_history"]の配列の奇数番目のものならユーザーの質問、偶数番目ならChatGPTの回答、として表示

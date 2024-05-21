@@ -43,5 +43,7 @@ services:
 # ⑧ langchainをインストール．poetry add langchain@0.0.266
 # ⑨ llama-index類をインストール．poetry add llama-index@0.8.5 pypdf@3.15.2 nltk@3.8.1
 # ⑩ JSONスキーマ生成ツールpydanticが上記のインストールにより1.10.15が入る．これだとエラーとなるのでpoetry add pydantic@1.10.12でpydanticをダウングレードする．
+# ⑪ ここからはオプション機能：sqliteをインストールしてチャット履歴をDBに記録する.まず、sudo apt update、suto apt install -y sqlite3、でsqlite3をインストール
+# コマンド：sudo sqlite3 chat_history.db（sudoでアクセスしないとdelete from テーブルやdrop テーブルができない。
 
 
