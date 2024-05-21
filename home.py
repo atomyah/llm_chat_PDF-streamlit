@@ -9,10 +9,7 @@ def main():
 
     # タイトル
     st.set_page_config(page_title="ホーム", page_icon="🏠")
-    st.markdown(
-        "<h1 class='jp-san-serif'>PDF文書-質問回答AIチャットWeb ホーム</h1>",
-        unsafe_allow_html=True,
-    )
+    st.write("## PDF文書-質問回答AIチャットウェブ")
     titles()
 
     st.write(

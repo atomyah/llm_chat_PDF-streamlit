@@ -16,13 +16,12 @@ from langchain.chat_models import ChatOpenAI
 from llama_index.readers.file.docs_reader import PDFReader
 import hmac  # ログイン機能に必要
 from japanese_pages import titles
+import sqlite3
+from itertools import groupby
 
 # タイトル
 st.set_page_config(page_title="管理画面", page_icon="💻")
-st.markdown(
-    "<h1 class='jp-san-serif'>PDFアップロードページ（管理者用）</h1>",
-    unsafe_allow_html=True,
-)
+st.write("## 管理画面")
 titles()
 
 ##################################### タイトルのCSSを良しなに設定 ############################################
@@ -46,7 +45,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-##################################### タイトルのCSSを良しなに設定～ここまで ############################################
+##################################### タイトルのCSSを良しなに設定～ここまで ###################################
 
 
 ##################################### ログイン機能 ############################################
@@ -76,7 +75,18 @@ def check_password():
 
 if not check_password():
     st.stop()  # Do not continue if check_password is not True.
-##################################### ログイン機能～ここまで ############################################
+##################################### ログイン機能～ここまで #####################################
+
+
+############################### チャット履歴データベース接続設定 ##################################
+# データベースファイルのパスを設定
+root_dir = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(root_dir, "database", "chat_history.db")
+
+# データベースの設定
+conn = sqlite3.connect(db_path)
+c = conn.cursor()
+########################### チャット履歴データベース接続設定～ここまで ############################
 
 
 index = st.session_state.get("index")
@@ -99,13 +109,21 @@ def on_Change_file():
         st.session_state.pop("prev_uploaded_file")
 
 
+st.markdown(
+    "<h2 class='jp-san-serif'>PDFアップロード</h2>",
+    unsafe_allow_html=True,
+)
+
+
 upload_file = st.file_uploader(
-    label="Q&A対象ファイル",
+    label="Q&A対象PDFファイル",
     type="pdf",
     on_change=on_Change_file,  # ファイルがアップロードされたら（ベクトル化するPDFを新しくアップしたら）on_Change_file()でindexを削除する．
 )
 
-# PDFのアップロードとベクトル化
+st.write("---")
+
+###################################### PDFのアップロードとベクトル化 #####################################
 if upload_file and index is None:
     with st.spinner(text="準備中..."):
         with tempfile.NamedTemporaryFile(delete=True) as f:
@@ -142,3 +160,37 @@ if upload_file and index is None:
                 current_timestamp = datetime.now().strftime("%Y/%m/%d %H:%M:%S")
                 with open(prev_file_path, "w") as f:
                     f.write(f"{prev_uploaded_file}|{current_timestamp}")
+
+###################################### PDFのアップロードとベクトル化～ここまで #####################################
+
+
+###################################### すべてのチャット履歴の表示 #####################################
+st.markdown(
+    "<h2 class='jp-san-serif'>すべてのチャット履歴</h2><br />",
+    unsafe_allow_html=True,
+)
+
+c.execute(
+    "SELECT session_id, sender, timestamp, message FROM chat_history ORDER BY timestamp ASC"
+)
+chat_history = c.fetchall()
+
+# session_idごとにグループ化
+grouped_history = groupby(
+    chat_history, key=lambda x: x[0]
+)  # from itertools import groupbyによってsession_idごとにグループ化．lambdaは無名関数、xは各タプル（session_id,sender,timestamp,message)、従ってx[0]はsession_id
+# 無名関数は各タプルからsession_idを取り出し、それをグループ化のキーとして使用. つまり、grouped_historyは、チャット履歴のリストをsession_idごとにグループ化したイテレータ.
+
+
+# グループごとにチャット履歴を表示
+for session_id, group in grouped_history:
+    st.write(f"**セッションID:** {session_id}")
+    for session_id, sender, timestamp, message in group:
+        if sender == "user":
+            st.markdown(f"**ユーザー:** {message}（{timestamp}）")
+        else:
+            st.markdown(f"**ChatGPT:** {message}（{timestamp}）")
+    st.write("---")
+
+conn.close()
+###################################### すべてのチャット履歴の表示～ここまで #####################################

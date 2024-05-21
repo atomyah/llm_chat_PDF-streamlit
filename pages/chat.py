@@ -9,6 +9,8 @@
 import os
 import sqlite3
 import time
+import uuid
+import datetime
 import tempfile
 import shutil
 import json
@@ -30,10 +32,7 @@ from japanese_pages import titles
 
 # タイトル
 st.set_page_config(page_title="チャット", page_icon="💬")
-st.markdown(
-    "<h1 class='jp-san-serif'>チャットページ</h1>",
-    unsafe_allow_html=True,
-)
+st.write("## チャットページ")
 titles()
 
 st.write(
@@ -41,7 +40,14 @@ st.write(
     unsafe_allow_html=True,
 )
 
-##################################### データベースの設定 #########################################
+
+################# streamlit sessionの初期化 ###################
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+############# streamlit sessionの初期化ここまで ################
+
+
+##################################### チャット履歴データベースの設定 #########################################
 # ルートディレクトリのパスを取得
 root_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,9 +68,9 @@ c = conn.cursor()
 # テーブルの作成
 c.execute(
     """CREATE TABLE IF NOT EXISTS chat_history
-             (id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT, timestamp REAL, message TEXT)"""
+             (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, sender TEXT, timestamp REAL, message TEXT)"""
 )
-################################################################################################
+########################################## データベースの設定ここまで ########################################
 
 
 ##################################### タイトルのCSSを良しなに設定 ############################################
@@ -139,14 +145,19 @@ if "index" not in st.session_state:
 index = st.session_state["index"]
 ############# admin.pyでベクトル化されたindex.json配下を読み込む機能～ここまで ##################
 
+
+##################################### 以下、チャット機能 ######################################
 # チャット履歴の初期化
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 
-# テキスト入力フォームの領域
-# user_input = st.text_input(
-#     "質問を入力してください", key="input", placeholder="ここに入力..."
-# )
+
+# UNIXタイムスタンプを日付文字列に変換する関数
+def convert_timestamp(timestamp):
+    dt = datetime.datetime.fromtimestamp(timestamp)
+    return dt.strftime("%Y/%m/%d %H:%M:%S")
+
+
 user_input = st.chat_input(
     "...質問を入力ください"
 )  # st.text_inputだと上記のようにlabelなど色々設定できる代わりに中央に表示されてしまう．
@@ -163,13 +174,15 @@ if user_input:
 
         # チャット履歴をデータベースに挿入
         timestamp = time.time()
+        formatted_timestamp = convert_timestamp(timestamp)
+        session_id = str(st.session_state.session_id)  # セッションIDを取得
         c.execute(
-            "INSERT INTO chat_history (sender, timestamp, message) VALUES (?, ?, ?)",
-            (user_input, "user", timestamp),
+            "INSERT INTO chat_history (session_id, sender, timestamp, message) VALUES (?, ?, ?, ?)",
+            (session_id, "user", formatted_timestamp, user_input),
         )
         c.execute(
-            "INSERT INTO chat_history (sender, timestamp, message) VALUES (?, ?, ?)",
-            (answer.response, "chatgpt", timestamp),
+            "INSERT INTO chat_history (session_id, sender, timestamp, message) VALUES (?, ?, ?, ?)",
+            (session_id, "chatgpt", formatted_timestamp, answer.response),
         )
         conn.commit()
 
@@ -180,3 +193,5 @@ for i, message in enumerate(st.session_state["chat_history"]):
         st.markdown(f"**あなた:** {message}")
     else:
         st.markdown(f"**ChatGPT:** {message}")
+
+##################################### チャット機能～ここまで ######################################
