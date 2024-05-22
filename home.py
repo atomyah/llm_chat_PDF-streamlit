@@ -17,29 +17,6 @@ def main():
         unsafe_allow_html=True,
     )
 
-    ##################################### タイトルのCSSを良しなに設定 ############################################
-    # Google FontsからNoto Sans JPフォントをロードする
-    st.markdown(
-        """
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Robotoフォントをタイトル文字に使用するためのHTMLスタイル
-    st.markdown(
-        """
-        <style>
-        .jp-san-serif {
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 1.7rem;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    ##################################### タイトルのCSSを良しなに設定～ここまで ############################################
-
     # サイドバーにページ選択のセレクトボックスを作成
     # page = st.sidebar.selectbox(
     #     "ページを選択してください", ["ホーム", "管理画面", "チャットページ"]

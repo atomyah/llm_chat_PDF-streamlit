@@ -30,10 +30,12 @@ import hmac  # ログイン機能に必要
 from japanese_pages import titles
 
 
-# タイトル
+########### タイトル(japanese_page.pyによりサイドメニューを日本語化) ##############
 st.set_page_config(page_title="チャット", page_icon="💬")
 st.write("## チャットページ")
 titles()
+############ ここまで #############
+
 
 st.write(
     '<span style="color:blue;">○○○○（例：社内規則）について何でも聞いてください...😉</span>',
@@ -71,30 +73,6 @@ c.execute(
              (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, sender TEXT, timestamp REAL, message TEXT)"""
 )
 ########################################## データベースの設定ここまで ########################################
-
-
-##################################### タイトルのCSSを良しなに設定 ############################################
-# Google FontsからNoto Sans JPフォントをロードする
-st.markdown(
-    """
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
-    """,
-    unsafe_allow_html=True,
-)
-
-# Robotoフォントをタイトル文字に使用するためのHTMLスタイル
-st.markdown(
-    """
-    <style>
-    .jp-san-serif {
-        font-family: 'Noto Sans JP', sans-serif;
-        font-size: 1.5rem;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-##################################### タイトルのCSSを良しなに設定～ここまで ############################################
 
 
 ############# admin.pyでベクトル化されたindex.json配下を読み込む機能 ##################

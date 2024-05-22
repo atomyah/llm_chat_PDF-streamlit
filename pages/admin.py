@@ -19,33 +19,11 @@ from japanese_pages import titles
 import sqlite3
 from itertools import groupby
 
-# タイトル
+########### タイトル(japanese_page.pyによりサイドメニューを日本語化) ##############
 st.set_page_config(page_title="管理画面", page_icon="💻")
 st.write("## 管理画面")
 titles()
-
-##################################### タイトルのCSSを良しなに設定 ############################################
-# Google FontsからNoto Sans JPフォントをロードする
-st.markdown(
-    """
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
-    """,
-    unsafe_allow_html=True,
-)
-
-# Robotoフォントをタイトル文字に使用するためのHTMLスタイル
-st.markdown(
-    """
-    <style>
-    .jp-san-serif {
-        font-family: 'Noto Sans JP', sans-serif;
-        font-size: 1.4rem;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-##################################### タイトルのCSSを良しなに設定～ここまで ###################################
+############ ここまで #############
 
 
 ##################################### ログイン機能 ############################################
@@ -164,33 +142,40 @@ if upload_file and index is None:
 ###################################### PDFのアップロードとベクトル化～ここまで #####################################
 
 
-###################################### すべてのチャット履歴の表示 #####################################
-st.markdown(
-    "<h2 class='jp-san-serif'>すべてのチャット履歴</h2><br />",
-    unsafe_allow_html=True,
+########################### すべてのチャット履歴の表示（ボタンを押して表示／非表示を切り替える ########################
+# セッションステートを使ってshow_historyを永続化
+if "show_history" not in st.session_state:
+    st.session_state.show_history = False
+
+# ボタンでshow_historyを切り替え
+st.session_state.show_history = st.button(
+    "チャット履歴を非表示"
+    if not st.session_state.show_history
+    else "チャット履歴を表示"
 )
 
-c.execute(
-    "SELECT session_id, sender, timestamp, message FROM chat_history ORDER BY timestamp ASC"
-)
-chat_history = c.fetchall()
+if st.session_state.show_history:
 
-# session_idごとにグループ化
-grouped_history = groupby(
-    chat_history, key=lambda x: x[0]
-)  # from itertools import groupbyによってsession_idごとにグループ化．lambdaは無名関数、xは各タプル（session_id,sender,timestamp,message)、従ってx[0]はsession_id
-# 無名関数は各タプルからsession_idを取り出し、それをグループ化のキーとして使用. つまり、grouped_historyは、チャット履歴のリストをsession_idごとにグループ化したイテレータ.
+    c.execute(
+        "SELECT session_id, sender, timestamp, message FROM chat_history ORDER BY timestamp ASC"
+    )
+    chat_history = c.fetchall()
 
+    # session_idごとにグループ化
+    grouped_history = groupby(
+        chat_history, key=lambda x: x[0]
+    )  # from itertools import groupbyによってsession_idごとにグループ化．lambdaは無名関数、xは各タプル（session_id,sender,timestamp,message)、従ってx[0]はsession_id
+    # 無名関数は各タプルからsession_idを取り出し、それをグループ化のキーとして使用. つまり、grouped_historyは、チャット履歴のリストをsession_idごとにグループ化したイテレータ.
 
-# グループごとにチャット履歴を表示
-for session_id, group in grouped_history:
-    st.write(f"**セッションID:** {session_id}")
-    for session_id, sender, timestamp, message in group:
-        if sender == "user":
-            st.markdown(f"**ユーザー:** {message}（{timestamp}）")
-        else:
-            st.markdown(f"**ChatGPT:** {message}（{timestamp}）")
-    st.write("---")
+    # グループごとにチャット履歴を表示
+    for session_id, group in grouped_history:
+        st.write(f"**セッションID:** {session_id}")
+        for session_id, sender, timestamp, message in group:
+            if sender == "user":
+                st.markdown(f"**ユーザー:** {message}（{timestamp}）")
+            else:
+                st.markdown(f"**ChatGPT:** {message}（{timestamp}）")
+        st.write("---")
 
-conn.close()
+    conn.close()
 ###################################### すべてのチャット履歴の表示～ここまで #####################################
