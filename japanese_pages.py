@@ -27,7 +27,7 @@ a[href="http://localhost:8501/admin"] span:first-child {
     color: transparent;
 }
 a[href="http://localhost:8501/admin"] span:first-child::before {
-    content: "💻管理画面";
+    content: "🔏管理画面";
     left: 0;
     z-index: 2;
     color: var(--text-color);

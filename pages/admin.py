@@ -18,6 +18,8 @@ import hmac  # ログイン機能に必要
 from japanese_pages import titles
 import sqlite3
 from itertools import groupby
+import csv
+import streamlit.components.v1 as components
 
 ########### タイトル(japanese_page.pyによりサイドメニューを日本語化) ##############
 st.set_page_config(page_title="管理画面", page_icon="💻")
@@ -67,16 +69,8 @@ c = conn.cursor()
 ########################### チャット履歴データベース接続設定～ここまで ############################
 
 
+########################### PDFファイルアップロード ############################
 index = st.session_state.get("index")
-
-prev_uploaded_file = st.session_state.get("prev_uploaded_file", None)
-
-# アプリ開始時に前回のアップロードしたPDFファイル名を読み込む
-prev_file_path = "prev_file.txt"
-if os.path.exists(prev_file_path):
-    with open(prev_file_path, "r") as f:
-        prev_file, prev_timestamp = f.read().split("|")
-    st.write(f"前回アップロードPDF: {prev_file} (日時: {prev_timestamp})")
 
 
 # indexをst.session_stateから削除する．
@@ -87,19 +81,28 @@ def on_Change_file():
         st.session_state.pop("prev_uploaded_file")
 
 
-st.markdown(
-    "<h2 class='jp-san-serif'>PDFアップロード</h2>",
-    unsafe_allow_html=True,
-)
+st.markdown(f"**🔝Q&A対象PDFファイルをアップロードします**")
 
+# アプリ開始時に前回のアップロードしたPDFファイル名を読み込み画面に表示
+prev_uploaded_file = st.session_state.get("prev_uploaded_file", None)
+prev_file_path = "prev_file.txt"
+if os.path.exists(prev_file_path):
+    with open(prev_file_path, "r") as f:
+        prev_file, prev_timestamp = f.read().split("|")
+    st.write(
+        f"前回アップロードPDF: 「{prev_file}」 (アップロード日時: {prev_timestamp})"
+    )
 
 upload_file = st.file_uploader(
-    label="Q&A対象PDFファイル",
+    label="",
     type="pdf",
     on_change=on_Change_file,  # ファイルがアップロードされたら（ベクトル化するPDFを新しくアップしたら）on_Change_file()でindexを削除する．
 )
 
+
 st.write("---")
+########################### PDFファイルアップロード ～ここまで ############################
+
 
 ###################################### PDFのアップロードとベクトル化 #####################################
 if upload_file and index is None:
@@ -143,17 +146,43 @@ if upload_file and index is None:
 
 
 ########################### すべてのチャット履歴の表示（ボタンを押して表示／非表示を切り替える ########################
+st.markdown(f"**📝データベースから全てのチャット履歴を表示します**")
 # セッションステートを使ってshow_historyを永続化
-if "show_history" not in st.session_state:
-    st.session_state.show_history = False
+if (
+    "show_history" not in st.session_state
+):  # show_historyというブール値のステートを作成.
+    st.session_state.show_history = False  # show_historyの初期値はfalse
 
-# ボタンでshow_historyを切り替え
-st.session_state.show_history = st.button(
-    "チャット履歴を非表示"
-    if not st.session_state.show_history
-    else "チャット履歴を表示"
-)
 
+# ボタンを横並びにするためのコンテナを作成
+button_container = st.columns(2)
+
+# ボタンをそれぞれのカラムに配置
+with button_container[0]:
+    button_style = """
+        display: inline-block;
+        width: 200px;
+    """
+    if st.button(
+        "チャット履歴を表示", use_container_width=True, key="show_history_button"
+    ):
+        st.session_state.show_history = True
+
+with button_container[1]:
+    button_style = """
+        display: inline-block;
+        width: 200px;
+    """
+    if st.button(
+        "チャット履歴を非表示", use_container_width=True, key="hide_history_button"
+    ):
+        st.session_state.show_history = False
+
+
+# # CSVファイルとして出力するボタン（なぜか無理．あきらめた…）
+# output_csv = st.button("チャット履歴をCSVファイルに出力")
+
+# show_historyがtrueならDBから読み込んでチャット履歴を表示する
 if st.session_state.show_history:
 
     c.execute(
@@ -179,3 +208,62 @@ if st.session_state.show_history:
 
     conn.close()
 ###################################### すべてのチャット履歴の表示～ここまで #####################################
+
+
+###################################### CSVファイルとして出力する処理 ######################################
+# （なぜか無理．あきらめた…）
+# if output_csv:
+#     c.execute(
+#         "SELECT session_id, sender, timestamp, message FROM chat_history ORDER BY timestamp ASC"
+#     )
+#     chat_history = c.fetchall()
+
+#     # CSVファイルに出力
+#     csv_file = "chat_history.csv"
+#     with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
+#         writer = csv.writer(f)
+#         writer.writerow(["session_id", "sender", "timestamp", "message"])
+#         writer.writerows(row for row in chat_history)
+
+#     # ファイルをStreamlitで表示
+#     with open(csv_file, encoding="utf-8") as f:
+#         st.download_button(
+#             label="CSVファイルをダウンロード",
+#             data=f.read(),
+#             file_name="chat_history.csv",
+#             mime="text/csv",
+#         )
+################################## CSVファイルとして出力する処理～ここまで #################################
+st.write("---")
+
+
+################################## データベースからチャットデータを全削除 #################################
+st.markdown(f"**🔥【注意】データベースからチャット履歴を全削除します**")
+
+# ボタンのCSSスタイルを定義
+danger_button_style = """
+<style>
+.danger-button {
+    background-color: #f44336;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+</style>
+"""
+
+# スタイルを適用したボタンを生成
+danger_button = f"""
+{danger_button_style}
+<button class="danger-button" onclick="if (confirm('データベースからチャット履歴をすべて消去します。よろしいですか？')) {{ Streamlit.setComponentValue('delete_history_button', true) }}">
+    チャット履歴をデータベースから全削除
+</button>
+"""
+
+# ボタンをレンダリング
+st.markdown(danger_button, unsafe_allow_html=True)
+
+
+############################# データベースからチャットデータを全削除～ここまで ##############################
