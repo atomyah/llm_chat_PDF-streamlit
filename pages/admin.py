@@ -19,13 +19,14 @@ from japanese_pages import titles
 import sqlite3
 from itertools import groupby
 import csv
-import streamlit.components.v1 as components
 
 ########### タイトル(japanese_page.pyによりサイドメニューを日本語化) ##############
 st.set_page_config(page_title="管理画面", page_icon="💻")
 st.write("## 管理画面")
 titles()
 ############ ここまで #############
+
+st.write("---")
 
 
 ##################################### ログイン機能 ############################################
@@ -98,11 +99,9 @@ upload_file = st.file_uploader(
     type="pdf",
     on_change=on_Change_file,  # ファイルがアップロードされたら（ベクトル化するPDFを新しくアップしたら）on_Change_file()でindexを削除する．
 )
-
-
-st.write("---")
 ########################### PDFファイルアップロード ～ここまで ############################
 
+st.write("---")
 
 ###################################### PDFのアップロードとベクトル化 #####################################
 if upload_file and index is None:
@@ -164,7 +163,7 @@ with button_container[0]:
         width: 200px;
     """
     if st.button(
-        "チャット履歴を表示", use_container_width=True, key="show_history_button"
+        "チャット履歴を全て表示", use_container_width=True, key="show_history_button"
     ):
         st.session_state.show_history = True
 
@@ -178,9 +177,6 @@ with button_container[1]:
     ):
         st.session_state.show_history = False
 
-
-# # CSVファイルとして出力するボタン（なぜか無理．あきらめた…）
-# output_csv = st.button("チャット履歴をCSVファイルに出力")
 
 # show_historyがtrueならDBから読み込んでチャット履歴を表示する
 if st.session_state.show_history:
@@ -209,61 +205,75 @@ if st.session_state.show_history:
     conn.close()
 ###################################### すべてのチャット履歴の表示～ここまで #####################################
 
+st.write("---")
+
 
 ###################################### CSVファイルとして出力する処理 ######################################
-# （なぜか無理．あきらめた…）
-# if output_csv:
-#     c.execute(
-#         "SELECT session_id, sender, timestamp, message FROM chat_history ORDER BY timestamp ASC"
-#     )
-#     chat_history = c.fetchall()
+# CSVファイルとして出力するボタン
+st.markdown(f"**📥チャット履歴をすべてCSVとしてダウンロードします**")
+output_csv = st.button("チャット履歴をCSVファイルに出力")
 
-#     # CSVファイルに出力
-#     csv_file = "chat_history.csv"
-#     with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
-#         writer = csv.writer(f)
-#         writer.writerow(["session_id", "sender", "timestamp", "message"])
-#         writer.writerows(row for row in chat_history)
+if output_csv:
+    c.execute(
+        "SELECT session_id, sender, timestamp, message FROM chat_history ORDER BY timestamp ASC"
+    )
+    chat_history = c.fetchall()
 
-#     # ファイルをStreamlitで表示
-#     with open(csv_file, encoding="utf-8") as f:
-#         st.download_button(
-#             label="CSVファイルをダウンロード",
-#             data=f.read(),
-#             file_name="chat_history.csv",
-#             mime="text/csv",
-#         )
+    # CSVファイルに出力
+    csv_file = "chat_history.csv"
+    with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["session_id", "sender", "timestamp", "message"])
+        writer.writerows(row for row in chat_history)
+
+    # ファイルをStreamlitで表示
+    with open(csv_file, encoding="utf-8") as f:
+        st.download_button(
+            label="CSVファイルをダウンロード",
+            data=f.read(),
+            file_name="chat_history.csv",
+            mime="text/csv",
+        )
+
 ################################## CSVファイルとして出力する処理～ここまで #################################
+
+
 st.write("---")
 
 
 ################################## データベースからチャットデータを全削除 #################################
-st.markdown(f"**🔥【注意】データベースからチャット履歴を全削除します**")
+# session_state.delete_confirmの初期化
+if "delete_confirm" not in st.session_state:
+    st.session_state.delete_confirm = False
 
-# ボタンのCSSスタイルを定義
-danger_button_style = """
-<style>
-.danger-button {
-    background-color: #f44336;
-    color: white;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
-</style>
-"""
 
-# スタイルを適用したボタンを生成
-danger_button = f"""
-{danger_button_style}
-<button class="danger-button" onclick="if (confirm('データベースからチャット履歴をすべて消去します。よろしいですか？')) {{ Streamlit.setComponentValue('delete_history_button', true) }}">
-    チャット履歴をデータベースから全削除
-</button>
-"""
+# データベースの全削除関数
+def delete_all_data():
+    c.execute("DELETE FROM chat_history")
+    conn.commit()
 
-# ボタンをレンダリング
-st.markdown(danger_button, unsafe_allow_html=True)
 
+st.markdown(
+    "<p style='color:red;font-weight:bold;'>🔥【注意】データベースからチャット履歴を全削除します</p>",
+    unsafe_allow_html=True,
+)
+
+
+# 削除ボタンを作成
+if st.button("チャット履歴をデータベースから全削除"):
+    st.session_state.delete_confirm = True
+
+# 確認ポップアップの表示
+if st.session_state.delete_confirm:
+    st.warning("データベースからチャット履歴をすべて消去します。よろしいですか？")
+    if st.button("はい、削除します"):
+        delete_all_data()
+        st.session_state.delete_confirm = False
+        st.success("チャット履歴が削除されました。")
+    if st.button("いいえ"):
+        st.session_state.delete_confirm = False
+
+# コネクションを閉じる
+conn.close()
 
 ############################# データベースからチャットデータを全削除～ここまで ##############################

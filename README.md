@@ -20,3 +20,10 @@
  ⑩ JSONスキーマ生成ツールpydanticが上記のインストールにより1.10.15が入る．これだとエラーとなるのでpoetry add pydantic@1.10.12でpydanticをダウングレードする．  
  ⑪ ここからはオプション機能：sqliteをインストールしてチャット履歴をDBに記録する.まず、sudo apt update、suto apt install -y sqlite3、でsqlite3をインストール  
  コマンド：sudo sqlite3 chat_history.db（sudoでアクセスしないとdelete from テーブルやdrop テーブルができない。  
+ ⑫ sqliteからデータベースをCSVに書き出し. （この際もsudoでアクセスしないとCSV書き出しできない）
+ # sqlite3 chat_history  
+ #  sqlite>　.headers on  
+ # sqlite>　.mode csv  
+ # sqlite>　.output output.csv  
+ # sqlite>　SELECT * FROM chat_history;  
+ # sqlite>　.quit  
