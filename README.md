@@ -27,3 +27,7 @@
  # sqlite>　.output output.csv  
  # sqlite>　SELECT * FROM chat_history;  
  # sqlite>　.quit  
+ # ⑬ sqliteデータベースへCSVをインポート. （この際もsudoでアクセスしないとCSV書き出しできない）
+ # sqlite3 chat_history  
+ # sqlite>　.headers on  
+ # sqlite>　.import output.csv chat_history  

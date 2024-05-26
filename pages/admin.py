@@ -145,7 +145,7 @@ if upload_file and index is None:
 
 
 ########################### すべてのチャット履歴の表示（ボタンを押して表示／非表示を切り替える ########################
-st.markdown(f"**📝データベースから全てのチャット履歴を表示します**")
+st.markdown(f"**📝全てのチャット履歴を表示します**")
 # セッションステートを使ってshow_historyを永続化
 if (
     "show_history" not in st.session_state
@@ -185,24 +185,28 @@ if st.session_state.show_history:
         "SELECT session_id, sender, timestamp, message FROM chat_history ORDER BY timestamp ASC"
     )
     chat_history = c.fetchall()
+    # チャット履歴が空の場合の処理
+    if not chat_history:
+        st.warning("チャット履歴がありません。")
+    else:
+        # session_idごとにグループ化
+        grouped_history = groupby(
+            chat_history, key=lambda x: x[0]
+        )  # from itertools import groupbyによってsession_idごとにグループ化．lambdaは無名関数、xは各タプル（session_id,sender,timestamp,message)、従ってx[0]はsession_id
+        # 無名関数は各タプルからsession_idを取り出し、それをグループ化のキーとして使用. つまり、grouped_historyは、チャット履歴のリストをsession_idごとにグループ化したイテレータ.
 
-    # session_idごとにグループ化
-    grouped_history = groupby(
-        chat_history, key=lambda x: x[0]
-    )  # from itertools import groupbyによってsession_idごとにグループ化．lambdaは無名関数、xは各タプル（session_id,sender,timestamp,message)、従ってx[0]はsession_id
-    # 無名関数は各タプルからsession_idを取り出し、それをグループ化のキーとして使用. つまり、grouped_historyは、チャット履歴のリストをsession_idごとにグループ化したイテレータ.
+        # グループごとにチャット履歴を表示
+        for session_id, group in grouped_history:
+            st.write(f"**セッションID:** {session_id}")
+            for session_id, sender, timestamp, message in group:
+                if sender == "user":
+                    st.markdown(f"**ユーザー:** {message}（{timestamp}）")
+                else:
+                    st.markdown(f"**ChatGPT:** {message}（{timestamp}）")
+            st.write("---")
 
-    # グループごとにチャット履歴を表示
-    for session_id, group in grouped_history:
-        st.write(f"**セッションID:** {session_id}")
-        for session_id, sender, timestamp, message in group:
-            if sender == "user":
-                st.markdown(f"**ユーザー:** {message}（{timestamp}）")
-            else:
-                st.markdown(f"**ChatGPT:** {message}（{timestamp}）")
-        st.write("---")
-
-    conn.close()
+        conn.close()  # ←【！重要！】この位置でcloseしないと（行ルートに記述してしまうと）「データベースからチャットデータを全削除」機能が使えない．
+        # 行ルートにに書くとDBがクローズされてしまっていることになるので,「データベースから全削除」ボタンをクリックすると「Cannot operate on a closed database」エラー．
 ###################################### すべてのチャット履歴の表示～ここまで #####################################
 
 st.write("---")
@@ -210,7 +214,7 @@ st.write("---")
 
 ###################################### CSVファイルとして出力する処理 ######################################
 # CSVファイルとして出力するボタン
-st.markdown(f"**📥チャット履歴をすべてCSVとしてダウンロードします**")
+st.markdown(f"**📥全てのチャット履歴をCSVとしてダウンロードします**")
 output_csv = st.button("チャット履歴をCSVファイルに出力")
 
 if output_csv:
